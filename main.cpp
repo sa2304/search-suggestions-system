@@ -1,15 +1,70 @@
 #include <cassert>
 #include <iostream>
+#include <optional>
 #include <sstream>
+#include <map>
 #include <vector>
 
 using namespace std;
 
+class Trie {
+ public:
+  vector<string> GetSuggestions(string_view prefix, int limit) const {
+    const Node *node = &root_;
+    for (char c: prefix) {
+      if (node->children.count(c)) {
+        node = node->children.at(c);
+      } else {
+        return {};
+      }
+    }
+    vector<string> result;
+    GetAllKeys_(node, result, limit);
+
+    return result;
+  }
+
+  void Insert(string value) {
+    Node *node = &root_;
+    for (char c: value) {
+      if (!node->children.count(c)) {
+        node->children[c] = new Node{};
+      }
+      node = node->children.at(c);
+    }
+    node->value = move(value);
+  }
+
+ private:
+  struct Node {
+    map<char, Node *> children;
+    optional<string> value;
+  } root_;
+
+  void GetAllKeys_(const Node *root, vector<string> &result, int limit) const {
+    if (result.size() < limit && root->value) {
+      result.push_back(*root->value);
+    }
+    for (const auto&[c, node]: root->children) {
+      GetAllKeys_(node, result, limit);
+    }
+  }
+};
+
 class Solution {
  public:
   vector<vector<string>> suggestedProducts(vector<string> &products, string searchWord) {
-    // FIXME
-    return {};
+    Trie trie;
+    for (const auto &p: products) {
+      trie.Insert(p);
+    }
+
+    vector<vector<string>> result;
+    for (int i = 1; i <= searchWord.length(); ++i) {
+      result.push_back(trie.GetSuggestions(searchWord.substr(0, i), 3));
+    }
+
+    return result;
   }
 };
 
@@ -60,6 +115,7 @@ void RunTests() {
     TestSuggestedProducts(products, "bags"s, expected_results);
   }
 }
+
 int main() {
   RunTests();
   std::cout << "Ok!" << std::endl;
